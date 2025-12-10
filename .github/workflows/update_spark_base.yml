@@ -18,12 +18,20 @@ jobs:
   update-spark-base-version:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          ref: relativity-main
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v4
 
+      - name: Azure Login
+        uses: Azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get KeyVault Secrets
+        uses: Azure/get-keyvault-secrets@v1
+        with:
+          keyvault: "ai-services-dev"
+          secrets: "githubServiceAccountPAT"
+        id: kv
+      
       - name: Set version variable
         id: set-version
         run: |
@@ -52,9 +60,6 @@ jobs:
           if git diff --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "No changes detected"
-            echo "Current SPARK_IMAGE values in files:"
-            grep "SPARK_IMAGE=" .github/workflows/relativity_main.yml || true
-            grep "SPARK_IMAGE=" .github/workflows/relativity_release.yaml || true
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "Changes detected:"
@@ -65,7 +70,7 @@ jobs:
         if: steps.update-files.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.kv.outputs.githubServiceAccountPAT }}
           commit-message: "Update spark-base version to ${{ steps.set-version.outputs.version }}"
           title: "Update spark-base version to ${{ steps.set-version.outputs.version }}"
           body: |
