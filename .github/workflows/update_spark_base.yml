@@ -41,15 +41,20 @@ jobs:
           VERSION="${{ steps.set-version.outputs.version }}"
           
           # Update relativity_main.yml
-          sed -i "s|SPARK_IMAGE=\${{ secrets.BASE_IMAGE }}:v[0-9.]*|SPARK_IMAGE=\${{ secrets.BASE_IMAGE }}:${VERSION}|g" .github/workflows/relativity_main.yml
+          # Match any SPARK_IMAGE line ending with :v followed by version numbers
+          # Use capture group to preserve everything before the version
+          sed -i "s|\(SPARK_IMAGE=.*:\)v[0-9.]*|\1${VERSION}|g" .github/workflows/relativity_main.yml
           
           # Update relativity_release.yaml
-          sed -i "s|SPARK_IMAGE=\${{ secrets.BASE_IMAGE }}:v[0-9.]*|SPARK_IMAGE=\${{ secrets.BASE_IMAGE }}:${VERSION}|g" .github/workflows/relativity_release.yaml
+          sed -i "s|\(SPARK_IMAGE=.*:\)v[0-9.]*|\1${VERSION}|g" .github/workflows/relativity_release.yaml
           
           # Check if any files were modified
           if git diff --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "No changes detected"
+            echo "Current SPARK_IMAGE values in files:"
+            grep "SPARK_IMAGE=" .github/workflows/relativity_main.yml || true
+            grep "SPARK_IMAGE=" .github/workflows/relativity_release.yaml || true
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "Changes detected:"
