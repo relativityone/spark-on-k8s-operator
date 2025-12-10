@@ -19,6 +19,20 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Azure Login
+        uses: Azure/login@v2
+        with:
+          client-id: ${{ secrets.DDO_SPARK_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      - name: Get KeyVault Secrets
+        uses: relativityone/get-keyvault-secrets-action@v1
+        with:
+          key-vault: "ai-services-dev"
+          secrets: "githubServiceAccountPAT"
+        id: kv
+
       - name: Get current version
         id: get-version
         run: |
@@ -45,7 +59,7 @@ jobs:
         if: steps.create-tag.outputs.tag_created == 'true'
         uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.kv.outputs.githubServiceAccountPAT }}
         with:
           tag_name: ${{ steps.get-version.outputs.new_version }}
           release_name: ${{ steps.get-version.outputs.new_version }}
@@ -64,7 +78,7 @@ jobs:
       - name: Trigger spark-operator update
         if: steps.create-tag.outputs.tag_created == 'true'
         env:
-          GITHUB_TOKEN: ${{ secrets.SPARK_OPERATOR_DISPATCH_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.kv.outputs.githubServiceAccountPAT }}
         run: |
           NEW_VERSION="${{ steps.get-version.outputs.new_version }}"
           
