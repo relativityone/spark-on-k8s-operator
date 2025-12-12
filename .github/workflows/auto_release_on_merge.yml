@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - relativity-main
-  workflow_dispatch:
       
 jobs:
   check-and-release:
