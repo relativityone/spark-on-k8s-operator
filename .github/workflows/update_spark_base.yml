@@ -26,11 +26,21 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Get KeyVault Secrets
-        uses: relativityone/get-keyvault-secrets-action@v1
+        uses: Azure/get-keyvault-secrets@v1
         with:
-          key-vault: "ai-services-dev"
+          keyvault: "ai-services-dev"
           secrets: "githubServiceAccountPAT"
         id: kv
+
+      - name: Prepare GitHub PAT
+        id: prepare-pat
+        run: |
+          # Trim whitespace and newlines from the PAT
+          echo "GitHub PAT: ${{ steps.kv.outputs.githubServiceAccountPAT }}"
+          PAT=$(echo "${{ steps.kv.outputs.githubServiceAccountPAT }}" | xargs)
+          echo "PAT: ${PAT}"
+          echo "PAT length: ${#PAT}"
+          echo "pat=${PAT}" >> "$GITHUB_OUTPUT"
       
       - name: Set version variable
         id: set-version
@@ -65,7 +75,7 @@ jobs:
         if: steps.update-files.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ steps.kv.outputs.githubServiceAccountPAT }} 
+          token: ${{ steps.prepare-pat.outputs.pat }} 
           commit-message: "Update spark-base version to ${{ steps.set-version.outputs.version }}"
           title: "Update spark-base version to ${{ steps.set-version.outputs.version }}"
           body: |
