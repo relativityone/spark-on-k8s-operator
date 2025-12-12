@@ -32,16 +32,6 @@ jobs:
           secrets: "githubServiceAccountPAT"
         id: kv
 
-      - name: Prepare GitHub PAT
-        id: prepare-pat
-        run: |
-          # Trim whitespace and newlines from the PAT
-          echo "GitHub PAT: ${{ steps.kv.outputs.githubServiceAccountPAT }}"
-          PAT=$(echo "${{ steps.kv.outputs.githubServiceAccountPAT }}" | xargs)
-          echo "PAT: ${PAT}"
-          echo "PAT length: ${#PAT}"
-          echo "pat=${PAT}" >> "$GITHUB_OUTPUT"
-      
       - name: Set version variable
         id: set-version
         run: |
@@ -75,7 +65,7 @@ jobs:
         if: steps.update-files.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ steps.prepare-pat.outputs.pat }} 
+          token: ${{ steps.kv.outputs.githubServiceAccountPAT }}
           commit-message: "Update spark-base version to ${{ steps.set-version.outputs.version }}"
           title: "Update spark-base version to ${{ steps.set-version.outputs.version }}"
           body: |

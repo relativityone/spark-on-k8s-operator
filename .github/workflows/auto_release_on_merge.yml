@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - relativity-main
-
+      
 jobs:
   check-and-release:
     runs-on: ubuntu-latest
@@ -28,15 +28,6 @@ jobs:
           keyvault: "ai-services-dev"
           secrets: "githubServiceAccountPAT"
         id: kv
-
-      - name: Prepare GitHub PAT
-        id: prepare-pat
-        run: |
-          # Trim whitespace and newlines from the PAT
-          PAT=$(echo "${{ steps.kv.outputs.githubServiceAccountPAT }}" | xargs)
-          echo "PAT length: ${#PAT}"
-          echo "PAT starts with: ${PAT:0:4}..."
-          echo "pat=${PAT}" >> "$GITHUB_OUTPUT"
           
       - name: Get current version
         id: get-version
@@ -83,9 +74,9 @@ jobs:
       - name: Trigger spark-operator update
         if: steps.create-tag.outputs.tag_created == 'true'
         env:
-          GITHUB_PAT: ${{ steps.prepare-pat.outputs.pat }}
+          GITHUB_PAT: ${{ steps.kv.outputs.githubServiceAccountPAT }}
         run: |
-          NEW_VERSION="${{ steps.get-version.outputs.new_version }}"
+          # NEW_VERSION="${{ steps.get-version.outputs.new_version }}"
           
           # Prepare payload for spark-operator repo using jq for reliable JSON construction
           PAYLOAD=$(jq -n \
