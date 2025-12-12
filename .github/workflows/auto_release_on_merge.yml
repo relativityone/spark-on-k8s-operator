@@ -36,7 +36,6 @@ jobs:
         run: |
           # Get the latest tag
           LATEST_TAG=$(git describe --tags --abbrev=0)
-          echo $(git describe --tags)
           if [ -z "$LATEST_TAG" ]; then
             echo "No tags found"
             exit 1
