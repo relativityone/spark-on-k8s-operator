@@ -19,18 +19,17 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      # TODO: Uncomment this when we have a new PAT
-      # - name: Azure Login
-      #   uses: Azure/login@v2
-      #   with:
-      #     creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Azure Login
+        uses: Azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # - name: Get KeyVault Secrets
-      #   uses: Azure/get-keyvault-secrets@v1
-      #   with:
-      #     keyvault: "ai-services-dev"
-      #     secrets: "githubServiceAccountPAT"
-      #   id: kv
+      - name: Get KeyVault Secrets
+        uses: relativityone/get-keyvault-secrets-action@v1
+        with:
+          key-vault: "ai-services-dev"
+          secrets: "githubServiceAccountPAT"
+        id: kv
           
       - name: Get current version
         id: get-version
@@ -77,8 +76,7 @@ jobs:
       - name: Trigger spark-operator update
         if: steps.create-tag.outputs.tag_created == 'true'
         env:
-          GITHUB_TOKEN: ${{ secrets.SPARK_OPERATOR_DISPATCH_TOKEN }} ### Remove this line when we have a new PAT
-          # GITHUB_TOKEN: ${{ steps.kv.outputs.githubServiceAccountPAT }}
+          GITHUB_PAT: ${{ steps.kv.outputs.githubServiceAccountPAT }}
         run: |
           NEW_VERSION="${{ steps.get-version.outputs.new_version }}"
           
@@ -100,7 +98,7 @@ jobs:
           # Trigger the workflow in spark-operator repository
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
             -H "Accept: application/vnd.github.v3+json" \
-            -H "Authorization: token ${GITHUB_TOKEN}" \
+            -H "Authorization: token ${GITHUB_PAT}" \
             https://api.github.com/repos/relativityone/spark-operator/dispatches \
             -d "$PAYLOAD")
           

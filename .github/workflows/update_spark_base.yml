@@ -26,9 +26,9 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Get KeyVault Secrets
-        uses: Azure/get-keyvault-secrets@v1
+        uses: relativityone/get-keyvault-secrets-action@v1
         with:
-          keyvault: "ai-services-dev"
+          key-vault: "ai-services-dev"
           secrets: "githubServiceAccountPAT"
         id: kv
       
