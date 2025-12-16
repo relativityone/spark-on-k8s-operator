@@ -51,18 +51,8 @@ jobs:
       - name: Get spark-base version
         id: get-spark-base-version
         run: |
-
           # Read the file and trim whitespace/newlines
           SPARK_BASE_VERSION=$(cat spark-base-version | xargs)
-          
-          # Check if version is empty
-          if [ -z "$SPARK_BASE_VERSION" ]; then
-            echo "ERROR: spark-base-version file is empty!"
-            echo "File contents:"
-            cat spark-base-version
-            exit 1
-          fi
-          
           # Ensure version starts with 'v'
           if [[ "$SPARK_BASE_VERSION" == v* ]]; then
             SPARK_BASE_VERSION="$SPARK_BASE_VERSION"
