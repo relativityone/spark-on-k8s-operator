@@ -60,4 +60,4 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            SPARK_IMAGE=${{ secrets.BASE_IMAGE }}:${{ steps.get-spark-base-version.outputs.SPARK_BASE_VERSION }}
+            SPARK_IMAGE=${{ secrets.BASE_IMAGE }}:v1.10.2
