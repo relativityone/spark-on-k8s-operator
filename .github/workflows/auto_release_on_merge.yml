@@ -7,7 +7,6 @@ on:
       - relativity-main
     types:
       - completed
-  workflow_dispatch:
       
 jobs:
   check-and-release:
