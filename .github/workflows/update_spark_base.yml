@@ -18,6 +18,7 @@ permissions:
 jobs:
   update-spark-base-version:
     runs-on: ubuntu-latest
+    environment: 'nonprod'
     steps:
       - uses: actions/checkout@v4
 
