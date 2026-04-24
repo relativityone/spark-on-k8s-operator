@@ -3,7 +3,11 @@
 
 # In the post-install hook, the token corresponding to the operator service account
 # is used to authenticate with the Kubernetes API server to install the secret bundle.
-
+{{- $jobNamespaces := .Values.sparkJobNamespaces | default list }}
+{{- if and .Values.webhook.enable .Values.webhook.failOnError (eq .Values.webhook.namespaceSelector "") }}
+  {{- fail "webhook.namespaceSelector must be set when webhook.failOnError is true. This prevents cluster-wide disruption if the webhook becomes unavailable." }}
+{{- end }}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -47,17 +51,35 @@ spec:
       - name: {{ .Chart.Name }}
         image: {{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
+        {{- if gt (int .Values.replicaCount) 1 }}
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+        {{- end }}
+        envFrom:
+          {{- toYaml .Values.envFrom | nindent 10 }}
         securityContext:
           {{- toYaml .Values.securityContext | nindent 10 }}
-        {{- if .Values.metrics.enable }}
+        {{- if or .Values.metrics.enable .Values.webhook.enable }}
         ports:
+          {{ if .Values.metrics.enable -}}
           - name: {{ .Values.metrics.portName | quote }}
             containerPort: {{ .Values.metrics.port }}
-        {{ end }}
+          {{- end }}
+          {{ if .Values.webhook.enable -}}
+          - name: {{ .Values.webhook.portName | quote }}
+            containerPort: {{ .Values.webhook.port }}
+          {{- end }}
+        {{ end -}}
         args:
         - -v={{ .Values.logLevel }}
         - -logtostderr
-        - -namespace={{ .Values.sparkJobNamespace }}
+        {{- if eq (len $jobNamespaces) 1 }}
+        - -namespace={{ index $jobNamespaces 0 }}
+        {{- end }}
         - -enable-ui-service={{ .Values.uiService.enable}}
         - -ingress-url-format={{ .Values.ingressUrlFormat }}
         - -controller-threads={{ .Values.controllerThreads }}
@@ -73,12 +95,16 @@ spec:
         {{- end }}
         {{- if .Values.webhook.enable }}
         - -enable-webhook=true
+        - -webhook-secret-name={{ include "spark-operator.webhookSecretName" . }}
+        - -webhook-secret-namespace={{ .Release.Namespace }}
+        - -webhook-svc-name={{ include "spark-operator.webhookServiceName" . }}
         - -webhook-svc-namespace={{ .Release.Namespace }}
+        - -webhook-config-name={{ include "spark-operator.fullname" . }}-webhook-config
         - -webhook-port={{ .Values.webhook.port }}
         - -webhook-timeout={{ .Values.webhook.timeout }}
-        - -webhook-svc-name={{ include "spark-operator.fullname" . }}-webhook
-        - -webhook-config-name={{ include "spark-operator.fullname" . }}-webhook-config
+        - -webhook-fail-on-error={{ .Values.webhook.failOnError }}
         - -webhook-namespace-selector={{ .Values.webhook.namespaceSelector }}
+        - -webhook-object-selector={{ .Values.webhook.objectSelector }}
         {{- end }}
         - -enable-resource-quota-enforcement={{ .Values.resourceQuotaEnforcement.enable }}
         {{- if gt (int .Values.replicaCount) 1 }}
@@ -86,29 +112,24 @@ spec:
         - -leader-election-lock-namespace={{ default .Release.Namespace .Values.leaderElection.lockNamespace }}
         - -leader-election-lock-name={{ .Values.leaderElection.lockName }}
         {{- end }}
+        {{- with .Values.resources }}
         resources:
-          {{- toYaml .Values.resources | nindent 10 }}
-        {{- if or .Values.webhook.enable (ne (len .Values.volumeMounts) 0 ) }}
-        volumeMounts:
+          {{- toYaml . | nindent 10 }}
         {{- end }}
-          {{- if .Values.webhook.enable }}
-          - name: webhook-certs
-            mountPath: /etc/webhook-certs
-          {{- end }}
         {{- with .Values.volumeMounts }}
-        {{- toYaml . | nindent 10 }}
+        volumeMounts:
+          {{- toYaml . | nindent 10 }}
         {{- end }}
-      {{- if or .Values.webhook.enable (ne (len .Values.volumes) 0 ) }}
-      volumes:
+      {{- with .Values.sidecars }}
+        {{- toYaml . | nindent 6 }}
       {{- end }}
-        {{- if .Values.webhook.enable }}
-        - name: webhook-certs
-          secret:
-            secretName: {{ include "spark-operator.fullname" . }}-webhook-certs
-        {{- end }}
-        {{- with .Values.volumes }}
+      {{- with .Values.volumes }}
+      volumes:
         {{- toYaml . | nindent 8 }}
-        {{- end }}
+      {{- end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

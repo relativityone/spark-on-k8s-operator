@@ -98,6 +98,12 @@ webhook:
     "helm.sh/hook-delete-policy": hook-succeeded
     # -- Webhook Timeout in seconds
   timeout: 30
+  # -- Whether Kubernetes should reject requests when the webhook fails.
+  # When false (default): webhook failures are ignored, pods may be created without mutations (e.g., missing tolerations).
+  # When true: webhook failures cause pod creation to fail, preventing misconfigured pods.
+  # IMPORTANT: When true, namespaceSelector MUST be set to avoid cluster-wide impact.
+  # Recommended for production environments to ensure consistent pod configuration.
+  failOnError: false
 
 metrics:
   # -- Enable prometheus metric scraping
