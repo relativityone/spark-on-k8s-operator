@@ -601,6 +601,20 @@ SparkUIConfiguration
 </tr>
 <tr>
 <td>
+<code>driverIngressOptions</code><br/>
+<em>
+<a href="#sparkoperator.k8s.io/v1beta2.DriverIngressConfiguration">
+[]DriverIngressConfiguration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DriverIngressOptions allows configuring the Service and the Ingress to expose ports inside Spark Driver</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>dynamicAllocation</code><br/>
 <em>
 <a href="#sparkoperator.k8s.io/v1beta2.DynamicAllocation">
@@ -991,6 +1005,122 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="sparkoperator.k8s.io/v1beta2.DriverIngressConfiguration">DriverIngressConfiguration
+</h3>
+<p>
+(<em>Appears on:</em><a href="#sparkoperator.k8s.io/v1beta2.SparkApplicationSpec">SparkApplicationSpec</a>)
+</p>
+<div>
+<p>DriverIngressConfiguration is for driver ingress specific configuration parameters.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>servicePort</code><br/>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>ServicePort allows configuring the port at service level that might be different from the targetPort.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>servicePortName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ServicePortName allows configuring the name of the service port.
+This may be useful for sidecar proxies like Envoy injected by Istio which require specific ports names to treat traffic as proper HTTP.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceType</code><br/>
+<em>
+<a href="https://v1-18.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#servicetype-v1-core">
+Kubernetes core/v1.ServiceType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ServiceType allows configuring the type of the service. Defaults to ClusterIP.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAnnotations</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ServiceAnnotations is a map of key,value pairs of annotations that might be added to the service object.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceLabels</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ServiceLables is a map of key,value pairs of labels that might be added to the service object.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ingressURLFormat</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>IngressURLFormat is the URL for the ingress.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ingressAnnotations</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>IngressAnnotations is a map of key,value pairs of annotations that might be added to the ingress object. i.e. specify nginx as ingress.class</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ingressTLS</code><br/>
+<em>
+<a href="https://v1-18.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#ingresstls-v1-networking">
+[]Kubernetes networking/v1.IngressTLS
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TlsHosts is useful If we need to declare SSL certificates to the ingress object</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="sparkoperator.k8s.io/v1beta2.DriverSpec">DriverSpec
 </h3>
 <p>
@@ -1100,6 +1230,19 @@ map[string]string
 <td>
 <em>(Optional)</em>
 <p>ServiceAnnotations defines the annotations to be added to the Kubernetes headless service used by
+executors to connect to the driver.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceLabels</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ServiceLabels defines the labels to be added to the Kubernetes headless service used by
 executors to connect to the driver.</p>
 </td>
 </tr>
@@ -1289,6 +1432,20 @@ string
 <em>(Optional)</em>
 <p>JavaOptions is a string of extra JVM options to pass to the executors. For instance,
 GC settings or other logging.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lifecycle</code><br/>
+<em>
+<a href="https://v1-18.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#lifecycle-v1-core">
+Kubernetes core/v1.Lifecycle
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Lifecycle for running preStop or postStart commands</p>
 </td>
 </tr>
 <tr>
@@ -2466,6 +2623,20 @@ SparkUIConfiguration
 </tr>
 <tr>
 <td>
+<code>driverIngressOptions</code><br/>
+<em>
+<a href="#sparkoperator.k8s.io/v1beta2.DriverIngressConfiguration">
+[]DriverIngressConfiguration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DriverIngressOptions allows configuring the Service and the Ingress to expose ports inside Spark Driver</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>dynamicAllocation</code><br/>
 <em>
 <a href="#sparkoperator.k8s.io/v1beta2.DynamicAllocation">
@@ -2576,7 +2747,7 @@ ApplicationState
 <code>executorState</code><br/>
 <em>
 <a href="#sparkoperator.k8s.io/v1beta2.ExecutorState">
-map[string]github.com/GoogleCloudPlatform/spark-on-k8s-operator/pkg/apis/sparkoperator.k8s.io/v1beta2.ExecutorState
+map[string]github.com/kubeflow/spark-operator/pkg/apis/sparkoperator.k8s.io/v1beta2.ExecutorState
 </a>
 </em>
 </td>
@@ -2800,7 +2971,7 @@ Deprecated. Consider using <code>env</code> instead.</p>
 <code>envSecretKeyRefs</code><br/>
 <em>
 <a href="#sparkoperator.k8s.io/v1beta2.NameKey">
-map[string]github.com/GoogleCloudPlatform/spark-on-k8s-operator/pkg/apis/sparkoperator.k8s.io/v1beta2.NameKey
+map[string]github.com/kubeflow/spark-operator/pkg/apis/sparkoperator.k8s.io/v1beta2.NameKey
 </a>
 </em>
 </td>
@@ -3102,6 +3273,18 @@ map[string]string
 <td>
 <em>(Optional)</em>
 <p>ServiceAnnotations is a map of key,value pairs of annotations that might be added to the service object.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceLabels</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ServiceLables is a map of key,value pairs of labels that might be added to the service object.</p>
 </td>
 </tr>
 <tr>

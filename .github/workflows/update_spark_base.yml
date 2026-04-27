@@ -1,0 +1,95 @@
+name: Update Spark Version
+
+on:
+  repository_dispatch:
+    types: [spark-base-updated]
+  workflow_dispatch:
+    inputs:
+      spark_version:
+        description: 'Spark version to update to (e.g., v1.9.18)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  update-spark-version:
+    runs-on: ubuntu-latest
+    environment: 'nonprod'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: Azure/login@v2
+        with:
+          client-id: ${{ secrets.DDO_SPARK_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      - name: Get KeyVault Secrets
+        uses: Azure/get-keyvault-secrets@v1
+        with:
+          keyvault: "ai-services-dev"
+          secrets: "githubServiceAccountPAT"
+        id: kv
+
+      - name: Set version variable
+        id: set-version
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            RAW_VERSION="${{ github.event.client_payload.version }}"
+          else
+            RAW_VERSION="${{ inputs.spark_version }}"
+          fi
+          # Ensure version starts with 'v'
+          if [[ "$RAW_VERSION" == v* ]]; then
+            NEW_VERSION="$RAW_VERSION"
+          else
+            NEW_VERSION="v$RAW_VERSION"
+          fi
+          echo "version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Updating to version: ${NEW_VERSION}"
+
+      - name: Update version file
+        id: update-files
+        run: |
+          VERSION="${{ steps.set-version.outputs.version }}"
+
+          # Replace the entire line in spark-version file
+          echo -n "${VERSION}" > spark-version
+
+          # Check if any files were modified
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No changes detected"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Changes detected:"
+            git diff
+          fi
+
+      - name: Create Pull Request
+        if: steps.update-files.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ steps.kv.outputs.githubServiceAccountPAT }}
+          commit-message: "Update spark version to ${{ steps.set-version.outputs.version }}"
+          title: "Update spark version to ${{ steps.set-version.outputs.version }}"
+          body: |
+            This PR updates the spark image version to `${{ steps.set-version.outputs.version }}`.
+            
+            ## Changes
+            - Updated `spark-version`
+            
+            This PR was automatically created by the update-spark workflow.
+          branch: update-spark-${{ steps.set-version.outputs.version }}
+          base: relativity-main
+          delete-branch: true
+
+      - name: No changes needed
+        if: steps.update-files.outputs.changed == 'false'
+        run: |
+          echo "Spark version is already up to date. No PR created."

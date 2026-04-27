@@ -5,7 +5,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: (unknown)
-    api-approved.kubernetes.io: https://github.com/GoogleCloudPlatform/spark-on-k8s-operator/pull/1298
+    api-approved.kubernetes.io: https://github.com/kubeflow/spark-operator/pull/1298
   name: scheduledsparkapplications.sparkoperator.k8s.io
 spec:
   group: sparkoperator.k8s.io
@@ -917,8 +917,15 @@ spec:
                                       x-kubernetes-int-or-string: true
                                     type: object
                                 type: object
+                              restartPolicy:
+                                type: string
                               securityContext:
                                 properties:
+                                  seccompProfile:
+                                    type: object
+                                    properties:
+                                      type:
+                                        type: string
                                   allowPrivilegeEscalation:
                                     type: boolean
                                   capabilities:
@@ -1272,6 +1279,11 @@ spec:
                           type: array
                         securityContext:
                           properties:
+                            seccompProfile:
+                              type: object
+                              properties:
+                                type:
+                                  type: string
                             allowPrivilegeEscalation:
                               type: boolean
                             capabilities:
@@ -1323,6 +1335,10 @@ spec:
                         serviceAccount:
                           type: string
                         serviceAnnotations:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        serviceLabels:
                           additionalProperties:
                             type: string
                           type: object
@@ -1704,6 +1720,11 @@ spec:
                                 type: object
                               securityContext:
                                 properties:
+                                  seccompProfile:
+                                    type: object
+                                    properties:
+                                      type:
+                                        type: string
                                   allowPrivilegeEscalation:
                                     type: boolean
                                   capabilities:
@@ -2729,8 +2750,15 @@ spec:
                                       x-kubernetes-int-or-string: true
                                     type: object
                                 type: object
+                              restartPolicy:
+                                type: string
                               securityContext:
                                 properties:
+                                  seccompProfile:
+                                    type: object
+                                    properties:
+                                      type:
+                                        type: string
                                   allowPrivilegeEscalation:
                                     type: boolean
                                   capabilities:
@@ -2980,6 +3008,11 @@ spec:
                           type: array
                         securityContext:
                           properties:
+                            seccompProfile:
+                              type: object
+                              properties:
+                                type:
+                                  type: string
                             allowPrivilegeEscalation:
                               type: boolean
                             capabilities:
@@ -3408,6 +3441,11 @@ spec:
                                 type: object
                               securityContext:
                                 properties:
+                                  seccompProfile:
+                                    type: object
+                                    properties:
+                                      type:
+                                        type: string
                                   allowPrivilegeEscalation:
                                     type: boolean
                                   capabilities:
@@ -3720,6 +3758,10 @@ spec:
                           additionalProperties:
                             type: string
                           type: object
+                        serviceLabels:
+                          additionalProperties:
+                            type: string
+                          type: object
                         ingressAnnotations:
                           additionalProperties:
                             type: string
@@ -3741,6 +3783,43 @@ spec:
                         serviceType:
                           type: string
                       type: object
+                    driverIngressOptions:
+                      items:
+                        properties:
+                          serviceAnnotations:
+                            additionalProperties:
+                              type: string
+                            type: object
+                          serviceLabels:
+                            additionalProperties:
+                              type: string
+                            type: object
+                          ingressURLFormat:
+                            type: string
+                          ingressAnnotations:
+                            additionalProperties:
+                              type: string
+                            type: object
+                          ingressTLS:
+                            items:
+                              properties:
+                                hosts:
+                                  items:
+                                    type: string
+                                  type: array
+                                secretName:
+                                  type: string
+                              type: object
+                            type: array
+                          servicePort:
+                            format: int32
+                            type: integer
+                          servicePortName:
+                            type: string
+                          serviceType:
+                            type: string
+                        type: object
+                      type: array
                     sparkVersion:
                       type: string
                     timeToLiveSeconds:
@@ -3935,6 +4014,29 @@ spec:
                                 - type: string
                                 pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                 x-kubernetes-int-or-string: true
+                            type: object
+                          ephemeral:
+                            properties:
+                              volumeClaimTemplate:
+                                properties:
+                                  spec:
+                                    properties:
+                                      accessModes:
+                                        items:
+                                          type: string
+                                        type: array
+                                      resources:
+                                        properties:
+                                          requests:
+                                            properties:
+                                              storage:
+                                                type: string
+                                            type: object
+                                        type: object
+                                      storageClassName:
+                                        type: string
+                                    type: object
+                                type: object
                             type: object
                           fc:
                             properties:

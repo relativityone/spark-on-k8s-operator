@@ -26,14 +26,14 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	clientWatch "k8s.io/client-go/tools/watch"
-	"k8s.io/kubernetes/pkg/util/interrupt"
+	"k8s.io/kubectl/pkg/util/interrupt"
 
-	crdclientset "github.com/GoogleCloudPlatform/spark-on-k8s-operator/pkg/client/clientset/versioned"
+	crdclientset "github.com/kubeflow/spark-operator/pkg/client/clientset/versioned"
 )
 
 var FollowEvents bool
@@ -154,7 +154,8 @@ func streamEvents(events watch.Interface, streamSince int64) error {
 		table = prepareNewTable()
 		table.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
 		ctx := context.TODO()
-		ctx, _ = context.WithTimeout(ctx, watchExpire)
+		ctx, cancel := context.WithTimeout(ctx, watchExpire)
+		defer cancel()
 		_, err := clientWatch.UntilWithoutRetry(ctx, events, func(ev watch.Event) (bool, error) {
 			if event, isEvent := ev.Object.(*v1.Event); isEvent {
 				// Ensure to display events which are newer than last creation time of SparkApplication
@@ -170,7 +171,7 @@ func streamEvents(events watch.Interface, streamSince int64) error {
 					table.Render()
 				}
 			} else {
-				fmt.Printf("info: %v", ev.Object)
+				fmt.Printf("info: %v", strings.Replace(fmt.Sprintf("%v", ev.Object), "\n", "", -1))
 			}
 
 			return false, nil

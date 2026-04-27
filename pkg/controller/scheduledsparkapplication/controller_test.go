@@ -26,15 +26,15 @@ import (
 	apiextensionsfake "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/clock"
 	kubeclientfake "k8s.io/client-go/kubernetes/fake"
 	kubetesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
+	clocktesting "k8s.io/utils/clock/testing"
 
-	"github.com/GoogleCloudPlatform/spark-on-k8s-operator/pkg/apis/sparkoperator.k8s.io/v1beta2"
-	crdclientfake "github.com/GoogleCloudPlatform/spark-on-k8s-operator/pkg/client/clientset/versioned/fake"
-	crdinformers "github.com/GoogleCloudPlatform/spark-on-k8s-operator/pkg/client/informers/externalversions"
-	"github.com/GoogleCloudPlatform/spark-on-k8s-operator/pkg/config"
+	"github.com/kubeflow/spark-operator/pkg/apis/sparkoperator.k8s.io/v1beta2"
+	crdclientfake "github.com/kubeflow/spark-operator/pkg/client/clientset/versioned/fake"
+	crdinformers "github.com/kubeflow/spark-operator/pkg/client/informers/externalversions"
+	"github.com/kubeflow/spark-operator/pkg/config"
 )
 
 func TestSyncScheduledSparkApplication_Allow(t *testing.T) {
@@ -515,12 +515,12 @@ func TestCheckAndUpdatePastRuns(t *testing.T) {
 	assert.Nil(t, existing)
 }
 
-func newFakeController() (*Controller, *clock.FakeClock) {
+func newFakeController() (*Controller, *clocktesting.FakeClock) {
 	crdClient := crdclientfake.NewSimpleClientset()
 	kubeClient := kubeclientfake.NewSimpleClientset()
 	apiExtensionsClient := apiextensionsfake.NewSimpleClientset()
 	informerFactory := crdinformers.NewSharedInformerFactory(crdClient, 1*time.Second)
-	clk := clock.NewFakeClock(time.Now())
+	clk := clocktesting.NewFakeClock(time.Now())
 	controller := NewController(crdClient, kubeClient, apiExtensionsClient, informerFactory, clk)
 	ssaInformer := informerFactory.Sparkoperator().V1beta2().ScheduledSparkApplications().Informer()
 	saInformer := informerFactory.Sparkoperator().V1beta2().SparkApplications().Informer()

@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    https://www.apache.org/licenses/LICENSE-2.0
+	https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -199,4 +199,29 @@ func TestSetSparkApplicationDefaultsExecutorSpecDefaults(t *testing.T) {
 	assert.Nil(t, app.Spec.Executor.Memory)
 	assert.Nil(t, app.Spec.Executor.Instances)
 
+	//Case3: Dynamic allocation is enabled with minExecutors = 0
+	var minExecs = int32(0)
+	app = &SparkApplication{
+		Spec: SparkApplicationSpec{
+			DynamicAllocation: &DynamicAllocation{
+				Enabled:      true,
+				MinExecutors: &minExecs,
+			},
+		},
+	}
+
+	SetSparkApplicationDefaults(app)
+	assert.Nil(t, app.Spec.Executor.Instances)
+
+	//Case4: Dynamic allocation is enabled via SparkConf
+	app = &SparkApplication{
+		Spec: SparkApplicationSpec{
+			SparkConf: map[string]string{
+				"spark.dynamicallocation.enabled": "true",
+			},
+		},
+	}
+
+	SetSparkApplicationDefaults(app)
+	assert.Nil(t, app.Spec.Executor.Instances)
 }

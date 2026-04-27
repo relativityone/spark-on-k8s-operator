@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -42,15 +43,15 @@ import (
 	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
 
-	"github.com/GoogleCloudPlatform/spark-on-k8s-operator/pkg/apis/sparkoperator.k8s.io/v1beta2"
-	"github.com/GoogleCloudPlatform/spark-on-k8s-operator/pkg/batchscheduler"
-	schedulerinterface "github.com/GoogleCloudPlatform/spark-on-k8s-operator/pkg/batchscheduler/interface"
-	crdclientset "github.com/GoogleCloudPlatform/spark-on-k8s-operator/pkg/client/clientset/versioned"
-	crdscheme "github.com/GoogleCloudPlatform/spark-on-k8s-operator/pkg/client/clientset/versioned/scheme"
-	crdinformers "github.com/GoogleCloudPlatform/spark-on-k8s-operator/pkg/client/informers/externalversions"
-	crdlisters "github.com/GoogleCloudPlatform/spark-on-k8s-operator/pkg/client/listers/sparkoperator.k8s.io/v1beta2"
-	"github.com/GoogleCloudPlatform/spark-on-k8s-operator/pkg/config"
-	"github.com/GoogleCloudPlatform/spark-on-k8s-operator/pkg/util"
+	"github.com/kubeflow/spark-operator/pkg/apis/sparkoperator.k8s.io/v1beta2"
+	"github.com/kubeflow/spark-operator/pkg/batchscheduler"
+	schedulerinterface "github.com/kubeflow/spark-operator/pkg/batchscheduler/interface"
+	crdclientset "github.com/kubeflow/spark-operator/pkg/client/clientset/versioned"
+	crdscheme "github.com/kubeflow/spark-operator/pkg/client/clientset/versioned/scheme"
+	crdinformers "github.com/kubeflow/spark-operator/pkg/client/informers/externalversions"
+	crdlisters "github.com/kubeflow/spark-operator/pkg/client/listers/sparkoperator.k8s.io/v1beta2"
+	"github.com/kubeflow/spark-operator/pkg/config"
+	"github.com/kubeflow/spark-operator/pkg/util"
 )
 
 const (
@@ -447,7 +448,7 @@ func (c *Controller) getAndUpdateAppState(app *v1beta2.SparkApplication) error {
 
 func (c *Controller) handleSparkApplicationDeletion(app *v1beta2.SparkApplication) {
 	if c.metrics != nil {
-		c.metrics.exportMetricsOnDelete(app)
+		c.metrics.HandleSparkApplicationDelete(app)
 	}
 	// SparkApplication deletion requested, lets delete driver pod.
 	if err := c.deleteSparkResources(app); err != nil {
@@ -483,41 +484,41 @@ func shouldRetry(app *v1beta2.SparkApplication) bool {
 }
 
 // State Machine for SparkApplication:
-//+--------------------------------------------------------------------------------------------------------------------+
-//|        +---------------------------------------------------------------------------------------------+             |
-//|        |       +----------+                                                                          |             |
-//|        |       |          |                                                                          |             |
-//|        |       |          |                                                                          |             |
-//|        |       |Submission|                                                                          |             |
-//|        |  +---->  Failed  +----+------------------------------------------------------------------+  |             |
-//|        |  |    |          |    |                                                                  |  |             |
-//|        |  |    |          |    |                                                                  |  |             |
-//|        |  |    +----^-----+    |  +-----------------------------------------+                     |  |             |
-//|        |  |         |          |  |                                         |                     |  |             |
-//|        |  |         |          |  |                                         |                     |  |             |
-//|      +-+--+----+    |    +-----v--+-+          +----------+           +-----v-----+          +----v--v--+          |
-//|      |         |    |    |          |          |          |           |           |          |          |          |
-//|      |         |    |    |          |          |          |           |           |          |          |          |
-//|      |   New   +---------> Submitted+----------> Running  +----------->  Failing  +---------->  Failed  |          |
-//|      |         |    |    |          |          |          |           |           |          |          |          |
-//|      |         |    |    |          |          |          |           |           |          |          |          |
-//|      |         |    |    |          |          |          |           |           |          |          |          |
-//|      +---------+    |    +----^-----+          +-----+----+           +-----+-----+          +----------+          |
-//|                     |         |                      |                      |                                      |
-//|                     |         |                      |                      |                                      |
-//|    +------------+   |         |             +-------------------------------+                                      |
-//|    |            |   |   +-----+-----+       |        |                +-----------+          +----------+          |
-//|    |            |   |   |  Pending  |       |        |                |           |          |          |          |
-//|    |            |   +---+   Rerun   <-------+        +---------------->Succeeding +---------->Completed |          |
-//|    |Invalidating|       |           <-------+                         |           |          |          |          |
-//|    |            +------->           |       |                         |           |          |          |          |
-//|    |            |       |           |       |                         |           |          |          |          |
-//|    |            |       +-----------+       |                         +-----+-----+          +----------+          |
-//|    +------------+                           |                               |                                      |
-//|                                             |                               |                                      |
-//|                                             +-------------------------------+                                      |
-//|                                                                                                                    |
-//+--------------------------------------------------------------------------------------------------------------------+
+// +--------------------------------------------------------------------------------------------------------------------+
+// |        +---------------------------------------------------------------------------------------------+             |
+// |        |       +----------+                                                                          |             |
+// |        |       |          |                                                                          |             |
+// |        |       |          |                                                                          |             |
+// |        |       |Submission|                                                                          |             |
+// |        |  +---->  Failed  +----+------------------------------------------------------------------+  |             |
+// |        |  |    |          |    |                                                                  |  |             |
+// |        |  |    |          |    |                                                                  |  |             |
+// |        |  |    +----^-----+    |  +-----------------------------------------+                     |  |             |
+// |        |  |         |          |  |                                         |                     |  |             |
+// |        |  |         |          |  |                                         |                     |  |             |
+// |      +-+--+----+    |    +-----v--+-+          +----------+           +-----v-----+          +----v--v--+          |
+// |      |         |    |    |          |          |          |           |           |          |          |          |
+// |      |         |    |    |          |          |          |           |           |          |          |          |
+// |      |   New   +---------> Submitted+----------> Running  +----------->  Failing  +---------->  Failed  |          |
+// |      |         |    |    |          |          |          |           |           |          |          |          |
+// |      |         |    |    |          |          |          |           |           |          |          |          |
+// |      |         |    |    |          |          |          |           |           |          |          |          |
+// |      +---------+    |    +----^-----+          +-----+----+           +-----+-----+          +----------+          |
+// |                     |         |                      |                      |                                      |
+// |                     |         |                      |                      |                                      |
+// |    +------------+   |         |             +-------------------------------+                                      |
+// |    |            |   |   +-----+-----+       |        |                +-----------+          +----------+          |
+// |    |            |   |   |  Pending  |       |        |                |           |          |          |          |
+// |    |            |   +---+   Rerun   <-------+        +---------------->Succeeding +---------->Completed |          |
+// |    |Invalidating|       |           <-------+                         |           |          |          |          |
+// |    |            +------->           |       |                         |           |          |          |          |
+// |    |            |       |           |       |                         |           |          |          |          |
+// |    |            |       +-----------+       |                         +-----+-----+          +----------+          |
+// |    +------------+                           |                               |                                      |
+// |                                             |                               |                                      |
+// |                                             +-------------------------------+                                      |
+// |                                                                                                                    |
+// +--------------------------------------------------------------------------------------------------------------------+
 func (c *Controller) syncSparkApplication(key string) error {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
@@ -535,6 +536,9 @@ func (c *Controller) syncSparkApplication(key string) error {
 		c.handleSparkApplicationDeletion(app)
 		return nil
 	}
+	if c.metrics != nil && app.ObjectMeta.CreationTimestamp.Time.After(time.Now().Add(-5*time.Second)) {
+        c.metrics.HandleSparkApplicationCreate(app)
+    }
 
 	appCopy := app.DeepCopy()
 	// Apply the default values to the copy. Note that the default values applied
@@ -691,7 +695,7 @@ func (c *Controller) submitSparkApplication(app *v1beta2.SparkApplication) *v1be
 			// Create UI Ingress if ingress-format is set.
 			if c.ingressURLFormat != "" {
 				// We are going to want to use an ingress url.
-				ingressURL, err := getSparkUIingressURL(c.ingressURLFormat, app.GetName(), app.GetNamespace())
+				ingressURL, err := getDriverIngressURL(c.ingressURLFormat, app.GetName(), app.GetNamespace())
 				if err != nil {
 					glog.Errorf("failed to get the spark ingress url %s/%s: %v", app.Namespace, app.Name, err)
 				} else {
@@ -711,6 +715,29 @@ func (c *Controller) submitSparkApplication(app *v1beta2.SparkApplication) *v1be
 						driverInfo.WebUIIngressName = ingress.ingressName
 					}
 				}
+			}
+		}
+	}
+
+	for _, driverIngressConfiguration := range app.Spec.DriverIngressOptions {
+		service, err := createDriverIngressServiceFromConfiguration(app, &driverIngressConfiguration, c.kubeClient)
+		if err != nil {
+			glog.Errorf("failed to create driver ingress service for SparkApplication %s/%s: %v", app.Namespace, app.Name, err)
+			continue
+		}
+		glog.Infof("Created driver ingress service %s (port: %d) for SparkApplication %s/%s", service.serviceName, service.servicePort, app.Namespace, app.Name)
+		// Create ingress if ingress-format is set.
+		if driverIngressConfiguration.IngressURLFormat != "" {
+			// We are going to want to use an ingress url.
+			ingressURL, err := getDriverIngressURL(driverIngressConfiguration.IngressURLFormat, app.GetName(), app.GetNamespace())
+			if err != nil {
+				glog.Errorf("failed to get the driver ingress url %s/%s: %v", app.Namespace, app.Name, err)
+			} else {
+				ingress, err := createDriverIngress(app, &driverIngressConfiguration, *service, ingressURL, c.ingressClassName, c.kubeClient)
+				if err != nil {
+					glog.Errorf("failed to create driver ingress for SparkApplication %s/%s: %v", app.Namespace, app.Name, err)
+				}
+				glog.Infof("Created driver ingress %s (url: %s) for SparkApplication %s/%s", ingress.ingressName, ingress.ingressURL, app.Namespace, app.Name)
 			}
 		}
 	}
@@ -834,7 +861,7 @@ func (c *Controller) updateStatusAndExportMetrics(oldApp, newApp *v1beta2.SparkA
 		return err
 	}
 
-	glog.V(2).Infof("Update the status of SparkApplication %s/%s from:\n%s\nto:\n%s", newApp.Namespace, newApp.Name, oldStatusJSON, newStatusJSON)
+	glog.V(2).Infof("Update the status of SparkApplication %s/%s from: %s to:%s", newApp.Namespace, newApp.Name, strings.Replace(oldStatusJSON, "\n", "", -1), strings.Replace(newStatusJSON, "\n", "", -1))
 	updatedApp, err := c.updateApplicationStatusWithRetries(oldApp, func(status *v1beta2.SparkApplicationStatus) {
 		*status = newApp.Status
 	})
@@ -844,7 +871,7 @@ func (c *Controller) updateStatusAndExportMetrics(oldApp, newApp *v1beta2.SparkA
 
 	// Export metrics if the update was successful.
 	if c.metrics != nil {
-		c.metrics.exportMetrics(oldApp, updatedApp)
+		c.metrics.HandleSparkApplicationUpdate(oldApp, updatedApp)
 	}
 
 	return nil
@@ -912,6 +939,26 @@ func (c *Controller) validateSparkApplication(app *v1beta2.SparkApplication) err
 	executorSpec := appSpec.Executor
 	if appSpec.NodeSelector != nil && (driverSpec.NodeSelector != nil || executorSpec.NodeSelector != nil) {
 		return fmt.Errorf("NodeSelector property can be defined at SparkApplication or at any of Driver,Executor")
+	}
+
+	var servicePorts map[int32]bool
+	var ingressURLFormats map[string]bool
+	for _, item := range appSpec.DriverIngressOptions {
+		if item.ServicePort == nil {
+			return fmt.Errorf("DriverIngressOptions has nill ServicePort")
+		}
+		if servicePorts[*item.ServicePort] {
+			return fmt.Errorf("DriverIngressOptions has duplicate ServicePort: %d", *item.ServicePort)
+		}
+		servicePorts[*item.ServicePort] = true
+
+		if item.IngressURLFormat == "" {
+			return fmt.Errorf("DriverIngressOptions has empty IngressURLFormat")
+		}
+		if ingressURLFormats[item.IngressURLFormat] {
+			return fmt.Errorf("DriverIngressOptions has duplicate IngressURLFormat: %s", item.IngressURLFormat)
+		}
+		ingressURLFormats[item.IngressURLFormat] = true
 	}
 
 	return nil

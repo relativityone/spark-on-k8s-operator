@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [ relativity-main ]
+  pull_request:
+    branches: [ relativity-main ]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-spark-operator:
+    environment: ${{ github.event_name == 'pull_request' && 'nonprod' || 'prod' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version-file: "go.mod"
+
+      - name: Run gofmt check
+        run: make fmt-check
+
+      - name: Run static analysis
+        run: make static-analysis
+
+      - name: Run unit tests
+        run: make unit-test
+
+      - name: Azure login
+        uses: Azure/login@v2
+        with:
+          client-id: ${{ secrets.DDO_SPARK_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      - name: Get secrets
+        uses: Azure/get-keyvault-secrets@v1
+        with:
+          keyvault: ${{ secrets.KEY_VAULT }}
+          secrets: "acrUsername, acrPassword"
+        id: kv
+
+      - name: Login to docker
+        uses: docker/login-action@v1 
+        with:
+          registry: ${{ secrets.REGISTRY }}
+          username: ${{ steps.kv.outputs.acrUsername }}
+          password: ${{ steps.kv.outputs.acrPassword }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Get spark version
+        id: get-spark-version
+        run: |
+          # Read the file and trim whitespace/newlines
+          SPARK_VERSION=$(cat spark-version | xargs)
+          # Ensure version starts with 'v'
+          if [[ "$SPARK_VERSION" == v* ]]; then
+            SPARK_VERSION="$SPARK_VERSION"
+          else
+            SPARK_VERSION="v$SPARK_VERSION"
+          fi
+          
+          SPARK_IMAGE=${{vars.SPARK_IMAGE_PATH}}:${SPARK_VERSION}
+          echo "Read spark version: ${SPARK_IMAGE}"
+          echo "SPARK_IMAGE=${SPARK_IMAGE}" >> "$GITHUB_OUTPUT"
+
+      - name: Build image
+        uses: docker/build-push-action@v2
+        with:
+          tags: spark-operator:local
+          outputs: 'type=docker,dest=/tmp/base-image.tar'
+          build-args: |
+            SPARK_IMAGE=${{ steps.get-spark-version.outputs.SPARK_IMAGE }}
+
+      - name: Cache image
+        uses: actions/upload-artifact@v4
+        with:
+          name: base-image
+          path: /tmp/base-image.tar
+
+      - name: Load image for validation
+        run: docker load -i /tmp/base-image.tar
+
+      - name: Validate security remediations
+        run: |
+          chmod +x ./scripts/validate-image-security.sh
+          ./scripts/validate-image-security.sh spark-operator:local

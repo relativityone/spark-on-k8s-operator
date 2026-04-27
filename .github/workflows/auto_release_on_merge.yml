@@ -1,0 +1,131 @@
+name: Auto Release and Notify Spark Operator
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    branches:
+      - relativity-main
+    types:
+      - completed
+      
+jobs:
+  check-and-release:
+    # Only run if the CI workflow completed successfully
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment: 'prod'
+    permissions:
+      contents: write
+      pull-requests: read
+      id-token: write
+    steps:
+      - name: Azure Login
+        uses: Azure/login@v2
+        with:
+          client-id: ${{ secrets.DDO_SPARK_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      - name: Get KeyVault Secrets
+        uses: Azure/get-keyvault-secrets@v1
+        with:
+          keyvault: "ai-services-dev"
+          secrets: "githubServiceAccountPAT"
+        id: kv
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: relativity-main
+          fetch-depth: 0 # Necessary to get the latest tag
+          token: ${{ steps.kv.outputs.githubServiceAccountPAT }}
+          
+      - name: Get current version
+        id: get-version
+        run: |
+          # Get the latest tag
+          LATEST_TAG=$(git describe --tags --abbrev=0)
+          if [ -z "$LATEST_TAG" ]; then
+            echo "No tags found"
+            exit 1
+          fi
+          echo "Latest tag: $LATEST_TAG"
+          NEW_VERSION=$(echo "$LATEST_TAG" | awk -F'.' '{OFS="."; $NF=$NF+1; print}')
+
+          echo "new_version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "New version will be: $NEW_VERSION"
+
+      - name: Create and push tag
+        id: create-tag
+        env:
+          GITHUB_TOKEN: ${{ steps.kv.outputs.githubServiceAccountPAT }}
+        run: |
+          git config --local user.email "aiservices_github_svc@github.com"
+          git config --local user.name "aiservices_github_svc"
+          NEW_VERSION="${{ steps.get-version.outputs.new_version }}"
+          git tag -a "$NEW_VERSION" -m "Release $NEW_VERSION"
+          git push origin "$NEW_VERSION"
+          echo "tag_created=true" >> "$GITHUB_OUTPUT"
+          echo "Created and pushed tag: $NEW_VERSION"
+
+      - name: Create GitHub Release
+        if: steps.create-tag.outputs.tag_created == 'true'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ steps.kv.outputs.githubServiceAccountPAT }}
+        with:
+          tag_name: ${{ steps.get-version.outputs.new_version }}
+          release_name: ${{ steps.get-version.outputs.new_version }}
+          body: |
+            ## Release ${{ steps.get-version.outputs.new_version }}
+            
+            This release includes updates to the spark-base image version.
+            
+            ### Changes
+            - Updated spark-base dependency version
+            
+            Auto-generated release from spark-base version update.
+          draft: false
+          prerelease: false
+
+      - name: Trigger spark-operator update
+        if: steps.create-tag.outputs.tag_created == 'true'
+        env:
+          GITHUB_PAT: ${{ steps.kv.outputs.githubServiceAccountPAT }}
+        run: |
+          NEW_VERSION="${{ steps.get-version.outputs.new_version }}"
+          SPARK_VERSION=$(cat spark-version | xargs)
+          # Prepare payload for spark-operator repo using jq for reliable JSON construction
+          PAYLOAD=$(jq -n \
+            --arg event_type "update-operator-image" \
+            --arg spark_on_k8s_version "$NEW_VERSION" \
+            --arg spark_version "$SPARK_VERSION" \
+            '{
+              "event_type": $event_type,
+              "client_payload": {
+                "spark_on_k8s_version": $spark_on_k8s_version,
+                "spark_version": $spark_version
+              }
+            }')
+          
+          echo "Payload being sent:"
+          echo "$PAYLOAD" | jq .
+          echo "Version value: ${NEW_VERSION}"
+          
+          # Trigger the workflow in spark-operator repository
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Authorization: token ${GITHUB_PAT}" \
+            https://api.github.com/repos/relativityone/spark-operator/dispatches \
+            -d "$PAYLOAD")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          if [ "$HTTP_CODE" -eq 204 ]; then
+            echo "Successfully triggered update-operator-image workflow in spark-operator repository with version: ${NEW_VERSION}"
+          else
+            echo "Failed to trigger workflow. HTTP code: $HTTP_CODE"
+            echo "Response: $BODY"
+            exit 1
+          fi
