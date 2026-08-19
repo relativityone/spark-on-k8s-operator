@@ -39,6 +39,16 @@ rules:
   - get
   - delete
 - apiGroups:
+  - networking.k8s.io
+  resources:
+  - networkpolicies
+  verbs:
+  - create
+  - get
+  - delete
+  - update
+  - patch
+- apiGroups:
   - ""
   resources:
   - nodes
