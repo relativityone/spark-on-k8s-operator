@@ -18,8 +18,8 @@ require (
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.11.1
 	gocloud.dev v0.37.0
-	golang.org/x/net v0.55.0
-	golang.org/x/sync v0.20.0
+	golang.org/x/net v0.58.0
+	golang.org/x/sync v0.22.0
 	golang.org/x/time v0.9.0
 	k8s.io/api v0.33.0
 	k8s.io/apiextensions-apiserver v0.33.0
@@ -109,11 +109,11 @@ require (
 	go.opentelemetry.io/otel/metric v1.43.0 // indirect
 	go.opentelemetry.io/otel/trace v1.43.0 // indirect
 	go.starlark.net v0.0.0-20230525235612-a134d8f9ddca // indirect
-	golang.org/x/crypto v0.52.0 // indirect
+	golang.org/x/crypto v0.55.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	golang.org/x/sys v0.45.0 // indirect
-	golang.org/x/term v0.43.0 // indirect
-	golang.org/x/text v0.37.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/term v0.45.0 // indirect
+	golang.org/x/text v0.41.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/api v0.172.0 // indirect
 	google.golang.org/genproto v0.0.0-20240401170217-c3f982113cda // indirect
